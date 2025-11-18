@@ -10,7 +10,7 @@ pipeline {
 
            steps {
 
-               git branch: 'main',
+               git branch: 'oussama',
 
                url: 'https://github.com/BenGamraOussama/DevOpsTest.git'
           }
