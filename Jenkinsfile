@@ -11,7 +11,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 // checkout du repo et de la branche 'oussama'
-                git branch: 'oussama', url: 'https://github.com/BenGamraOussama/DevOpsTest.git'
+                git branch: 'oussama', url: 'https://github.com/BenGamraOussama/Student_Management.git'
             }
         }
 
