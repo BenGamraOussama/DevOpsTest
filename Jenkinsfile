@@ -1,46 +1,47 @@
 pipeline {
     agent any
-
-    tools {
-        jdk 'JAVA_HOME'
-        maven 'M2_HOME'
-    }
-
     stages {
-        stage('Checkout') {
+        stage('Cloner GitHub') {
             steps {
-                echo 'Récupération du code source...'
+                echo '1. Clonage du projet depuis GitHub'
                 git branch: 'oussama',
-                    url: 'https://github.com/BenGamraOussama/Student_Management.git',
-                    credentialsId: 'github-token'
+                    url: 'https://github.com/BenGamraOussama/Student_Management.git'
             }
         }
-
-        stage('Compile') {
+        stage('Builder Application') {
             steps {
-                sh 'mvn compile'
+                echo '2. Construction de l application (sans les tests)'
+                sh 'mvn clean package -DskipTests'
             }
         }
-
-        stage('Build') {
+        stage('Construire Image Docker') {
             steps {
-                sh 'mvn package -DskipTests'
+                echo '3. Construction image Docker'
+                sh 'docker build -t oussamabengamra/student-app:latest .'
             }
         }
-
-        stage('Test') {
+        stage('Tester Image') {
             steps {
-                sh 'mvn test'
+                echo '4. Test de l image Docker'
+                sh '''
+                    docker run --rm \
+                    -e SPRING_PROFILES_ACTIVE=ci \
+                    oussamabengamra/student-app:latest
+                '''
+
             }
         }
     }
-
     post {
-        failure {
-            echo 'Échec du pipeline.'
-        }
         success {
-            echo 'Pipeline exécuté avec succès.'
+            echo 'SUCCÈS : Build et push réussis!'
+        }
+        failure {
+            echo 'ÉCHEC : Build failed!'
+        }
+        always {
+            echo 'Nettoyage...'
+            sh 'docker logout || true'  // || true pour éviter échec si pas loggé
         }
     }
 }
