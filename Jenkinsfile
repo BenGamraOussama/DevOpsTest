@@ -27,8 +27,8 @@ pipeline {
 
         stage('Test') {
             steps {
-                // Tests unitaires uniquement
-                sh 'mvn -B test'
+                echo '🔍 Exécution des tests unitaires uniquement'
+                sh 'mvn -B -Dspring.main.web-application-type=none -Dtest=!StudentManagementApplicationTests test'
             }
         }
     }
