@@ -21,5 +21,44 @@ pipeline {
                 sh 'mvn -B clean compile'
             }
         }
+
+        stage('Build') {
+            steps {
+                // Construction du package (JAR/WAR)
+                sh 'mvn -B clean package -DskipTests'
+            }
+            post {
+                success {
+                    // Optionnel : archiver l'artefact généré
+                    archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                // Exécution des tests
+                sh 'mvn -B test'
+            }
+            post {
+                always {
+                    // Publication des rapports de test même en cas d'échec
+                    junit 'target/surefire-reports/*.xml'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Nettoyage ou actions post-build
+            echo 'Pipeline terminé - Statut: ${currentBuild.result}'
+        }
+        success {
+            echo 'Build et tests réussis!'
+        }
+        failure {
+            echo 'Build ou tests échoués!'
+        }
     }
 }
