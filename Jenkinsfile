@@ -29,6 +29,17 @@ pipeline {
                 }
             }
         }
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    echo 'Analyse de la qualité de code avec SonarQube'
+                }
+                withSonarQubeEnv('SonarQube') {
+                    // Utilise le scanner Maven sans relancer les tests
+                    sh 'mvn -DskipTests -Dsonar.projectKey=student-management org.sonarsource.scanner.maven:sonar-maven-plugin:sonar'
+                }
+            }
+        }
     }
     post {
         success {
