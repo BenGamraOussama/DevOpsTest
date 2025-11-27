@@ -1,25 +1,114 @@
 pipeline {
+
+    /**********************************************************************
+     * Définition de l'agent et des outils utilisés
+     **********************************************************************/
     agent any
 
     tools {
-        // Remplacez les valeurs ci‑dessous par les labels configurés dans Jenkins
-        jdk 'JAVA_HOME'
-        maven 'M2_HOME'
+        // Utilise une installation Maven déclarée dans Jenkins
+        maven 'Maven-3.9'
+    }
+
+    /**********************************************************************
+     * Variables globales du pipeline
+     **********************************************************************/
+    environment {
+        // Token SonarQube stocké dans Jenkins Credentials (bonne pratique)
+        SONAR_TOKEN = credentials('sonar-token-id')
+
+        // URL du dépôt Git
+        GIT_URL = "https://github.com/BenGamraOussama/Student_Management.git"
+
+        // Branche à cloner
+        GIT_BRANCH = "ghofrane"
     }
 
     stages {
-        stage('Checkout') {
+
+        /******************************************************************
+         * Étape 1 : Récupération du code source depuis GitHub
+         ******************************************************************/
+        stage('Clonage GitHub') {
             steps {
-                // checkout du repo et de la branche 'ghofrane'
-                git branch: 'ghofrane', url: 'https://github.com/BenGamraOussama/DevOpsTest.git'
+                echo '1. Clonage du projet depuis GitHub...'
+
+                // Checkout Git propre
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${env.GIT_BRANCH}"]],
+                    userRemoteConfigs: [[url: env.GIT_URL]]
+                ])
+
+                // Afficher les informations du dernier commit
+                script {
+                    echo "Dernier commit :"
+                    sh "git log -1 --oneline"
+                }
             }
         }
 
-        stage('Compile') {
+        /******************************************************************
+         * Étape 2 : Compilation du projet
+         ******************************************************************/
+        stage('Compilation') {
             steps {
-                // option -B pour build non interactif, adapter si nécessaire
-                sh 'mvn -B clean compile'
+                echo "2. Compilation de l'application Spring Boot..."
+                sh "mvn clean compile -DskipTests=true"
             }
+        }
+
+        /******************************************************************
+         * Étape 3 : Exécution des tests unitaires
+         ******************************************************************/
+        stage('Tests') {
+            steps {
+                echo "3. Exécution des tests unitaires..."
+                sh "mvn test"
+            }
+        }
+
+        /******************************************************************
+         * Étape 4 : Analyse SonarQube
+         ******************************************************************/
+        stage('Analyse SonarQube') {
+            steps {
+                echo "4. Analyse de la qualité du code avec SonarQube..."
+
+                // Exécution de l'analyse Sonar
+                sh """
+                    mvn verify sonar:sonar \
+                        -Dsonar.projectKey=Student-Management \
+                        -Dsonar.projectName='Student-Management' \
+                        -Dsonar.host.url=http://localhost:9000 \
+                        -Dsonar.token=$SONAR_TOKEN
+                """
+            }
+        }
+
+        /******************************************************************
+         * Étape 5 : Packaging (bonne pratique CI)
+         ******************************************************************/
+        stage('Packaging') {
+            steps {
+                echo "5. Création du package exécutable..."
+                sh "mvn package -DskipTests"
+            }
+        }
+    }
+
+    /**********************************************************************
+     * Actions exécutées après le pipeline
+     **********************************************************************/
+    post {
+        success {
+            echo '✔ SUCCÈS : Build, tests et analyse SonarQube terminés !'
+        }
+        failure {
+            echo '❌ ÉCHEC : Une erreur est survenue lors du pipeline.'
+        }
+        always {
+            echo '🧹 Nettoyage des fichiers temporaires...'
         }
     }
 }

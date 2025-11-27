@@ -1,0 +1,44 @@
+services:
+
+  # ----------------------------------------
+  # 1. Application Spring Boot
+  # ----------------------------------------
+  # - Build l’image depuis le Dockerfile local
+  # - Utilise le réseau de la machine hôte (network_mode: host)
+  #   pour permettre à Spring Boot d’accéder à MySQL sur localhost:3306
+  # - Redémarrage automatique en cas d’erreur
+  spring-app:
+    build: .
+    container_name: spring-app
+    network_mode: host   # Nécessaire pour se connecter au MySQL local
+    environment:
+      # Optimisation Java
+      JAVA_OPTS: "-Djava.security.egd=file:/dev/./urandom"
+    restart: on-failure
+
+  # ----------------------------------------
+  # 2. SonarQube
+  # ----------------------------------------
+  # - Exposé sur le port 9000
+  # - Utilisation de volumes persistants (data, logs, extensions)
+  # - Désactivation des checks Elasticsearch pour l'exécution en local
+  sonarqube:
+    image: sonarqube:9.9-community
+    container_name: sonarqube
+    ports:
+      - "9000:9000"   # Accès SonarQube via http://localhost:9000
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    restart: unless-stopped
+
+# ----------------------------------------
+# Volumes persistants
+# ----------------------------------------
+volumes:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
