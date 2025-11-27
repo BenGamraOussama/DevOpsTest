@@ -31,8 +31,17 @@ pipeline {
         }
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') { // Vérifier que ce nom correspond à la config Jenkins
-                    sh 'mvn clean verify sonar:sonar -Dsonar.projectKey=student-management'
+                script {
+                    echo 'Analyse de la qualité de code avec SonarQube (configuration fournie)'
+                    // Utilise la configuration demandée. Par sécurité, si une variable d'environnement SONAR_TOKEN est fournie
+                    // dans Jenkins, elle sera utilisée à la place du token statique ci-dessous.
+                    sh """
+                        mvn clean verify sonar:sonar \
+                          -Dsonar.projectKey=Student-Management \
+                          -Dsonar.projectName='Student-Management' \
+                          -Dsonar.host.url=http://localhost:9000 \
+                          -Dsonar.token=${env.SONAR_TOKEN ?: 'sqp_d11c08a81174a60c9a107e8a340d7f4f9d7386ef'}
+                    """
                 }
             }
         }
