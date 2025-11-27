@@ -1,46 +1,44 @@
 pipeline {
     agent any
-
-    tools {
-        jdk 'JAVA_HOME'
-        maven 'M2_HOME'
-    }
-
     stages {
-        stage('Checkout') {
+        stage('GitHub') {
             steps {
-                echo 'Récupération du code source...'
+                echo '1. Clonage du projet depuis GitHub'
                 git branch: 'oussama',
-                    url: 'https://github.com/BenGamraOussama/Student_Management.git',
-                    credentialsId: 'github-token'
+                    url: 'https://github.com/BenGamraOussama/Student_Management.git'
+
+                script {
+                    // Afficher les informations du commit
+                    sh 'git log -1 --oneline'
+                }
             }
         }
-
-        stage('Compile') {
-            steps {
-                sh 'mvn compile'
-            }
-        }
-
         stage('Build') {
             steps {
-                sh 'mvn package -DskipTests'
+                script {
+                    echo "2. Building Spring Boot application..."
+                    sh 'mvn clean compile -DskipTests'
+                }
             }
         }
-
         stage('Test') {
             steps {
-                sh 'mvn test'
+                script {
+                    echo "Running tests..."
+                    sh 'mvn test'
+                }
             }
         }
     }
-
     post {
-        failure {
-            echo 'Échec du pipeline.'
-        }
         success {
-            echo 'Pipeline exécuté avec succès.'
+            echo 'SUCCÈS : Build et push réussis!'
+        }
+        failure {
+            echo 'ÉCHEC : Build failed!'
+        }
+        always {
+            echo 'Nettoyage...'
         }
     }
 }

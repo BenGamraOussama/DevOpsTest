@@ -1,42 +1,29 @@
 services:
-  mysql-db:
-    image: mysql:8.0
-    container_name: mysql-db
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: studentdb
-      MYSQL_USER: user
-      MYSQL_PASSWORD: user
-    ports:
-      - "3307:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
-      timeout: 20s
-      retries: 10
-
   spring-app:
     build: .
     container_name: spring-app
-    ports:
-      - "8089:8089"
+    # Use host networking so that "localhost" inside the container resolves to the host machine
+    # This allows the app to connect to a MySQL instance running on the host at localhost:3306
+    network_mode: host
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/studentdb
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-    depends_on:
-      mysql-db:
-        condition: service_healthy
-    networks:
-      - app-network
+      # Keep app defaults from application.properties (localhost DB, root user, empty password)
+      # Do not override datasource settings here so it uses localhost
+      JAVA_OPTS: "-Djava.security.egd=file:/dev/./urandom"
     restart: on-failure
 
-volumes:
-  mysql_data:
+  sonarqube:
+    image: sonarqube:9.9-community
+    container_name: sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
 
-networks:
-  app-network:
-    driver: bridge
+volumes:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
