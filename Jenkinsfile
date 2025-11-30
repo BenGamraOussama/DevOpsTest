@@ -1,114 +1,60 @@
 pipeline {
-
-    /**********************************************************************
-     * Définition de l'agent et des outils utilisés
-     **********************************************************************/
     agent any
-
-    tools {
-        // Utilise une installation Maven déclarée dans Jenkins
-        maven 'Maven-3.9'
-    }
-
-    /**********************************************************************
-     * Variables globales du pipeline
-     **********************************************************************/
-    environment {
-        // Token SonarQube stocké dans Jenkins Credentials (bonne pratique)
-        SONAR_TOKEN = credentials('sonar-token-id')
-
-        // URL du dépôt Git
-        GIT_URL = "https://github.com/BenGamraOussama/Student_Management.git"
-
-        // Branche à cloner
-        GIT_BRANCH = "ghofrane"
-    }
-
     stages {
-
-        /******************************************************************
-         * Étape 1 : Récupération du code source depuis GitHub
-         ******************************************************************/
-        stage('Clonage GitHub') {
+        stage('GitHub') {
             steps {
-                echo '1. Clonage du projet depuis GitHub...'
+                echo '1. Clonage du projet depuis GitHub'
+                git branch: 'ghofrane',
+                    url: 'https://github.com/BenGamraOussama/Student_Management.git'
 
-                // Checkout Git propre
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: "*/${env.GIT_BRANCH}"]],
-                    userRemoteConfigs: [[url: env.GIT_URL]]
-                ])
-
-                // Afficher les informations du dernier commit
                 script {
-                    echo "Dernier commit :"
-                    sh "git log -1 --oneline"
+                    // Afficher les informations du commit
+                    sh 'git log -1 --oneline'
                 }
             }
         }
-
-        /******************************************************************
-         * Étape 2 : Compilation du projet
-         ******************************************************************/
-        stage('Compilation') {
+        stage('Build') {
             steps {
-                echo "2. Compilation de l'application Spring Boot..."
-                sh "mvn clean compile -DskipTests=true"
+                script {
+                    echo "2. Building Spring Boot application..."
+                    sh 'mvn clean compile -DskipTests'
+                }
             }
         }
-
-        /******************************************************************
-         * Étape 3 : Exécution des tests unitaires
-         ******************************************************************/
-        stage('Tests') {
+        stage('Test') {
             steps {
-                echo "3. Exécution des tests unitaires..."
-                sh "mvn test"
+                script {
+                    echo "Running tests..."
+                    sh 'mvn test'
+                }
             }
         }
-
-        /******************************************************************
-         * Étape 4 : Analyse SonarQube
-         ******************************************************************/
-        stage('Analyse SonarQube') {
+        stage('SonarQube Analysis') {
             steps {
-                echo "4. Analyse de la qualité du code avec SonarQube..."
-
-                // Exécution de l'analyse Sonar
-                sh """
-                    mvn verify sonar:sonar \
-                        -Dsonar.projectKey=Student-Management \
-                        -Dsonar.projectName='Student-Management' \
-                        -Dsonar.host.url=http://localhost:9000 \
-                        -Dsonar.token=$SONAR_TOKEN
-                """
-            }
-        }
-
-        /******************************************************************
-         * Étape 5 : Packaging (bonne pratique CI)
-         ******************************************************************/
-        stage('Packaging') {
-            steps {
-                echo "5. Création du package exécutable..."
-                sh "mvn package -DskipTests"
+                script {
+                    echo 'Analyse de la qualité de code avec SonarQube (configuration fournie)'
+                    // Utilise la configuration demandée. Par sécurité, si une variable d'environnement SONAR_TOKEN est fournie
+                    // dans Jenkins, elle sera utilisée à la place du token statique ci-dessous.
+                    sh """
+                        mvn clean verify sonar:sonar \
+                          -Dsonar.projectKey=Student-Management \
+                          -Dsonar.projectName='Student-Management' \
+                          -Dsonar.host.url=http://localhost:9000 \
+                          -Dsonar.token=${env.SONAR_TOKEN ?: 'sqp_d11c08a81174a60c9a107e8a340d7f4f9d7386ef'}
+                    """
+                }
             }
         }
     }
-
-    /**********************************************************************
-     * Actions exécutées après le pipeline
-     **********************************************************************/
     post {
         success {
-            echo '✔ SUCCÈS : Build, tests et analyse SonarQube terminés !'
+            echo 'SUCCÈS : Build et push réussis!'
         }
         failure {
-            echo '❌ ÉCHEC : Une erreur est survenue lors du pipeline.'
+            echo 'ÉCHEC : Build failed!'
         }
         always {
-            echo '🧹 Nettoyage des fichiers temporaires...'
+            echo 'Nettoyage...'
         }
     }
 }
