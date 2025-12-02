@@ -1,8 +1,5 @@
 pipeline {
     agent any
-    tools {
-            maven 'Maven-3.9'
-        }
     stages {
         stage('GitHub') {
             steps {
@@ -20,6 +17,7 @@ pipeline {
             steps {
                 script {
                     echo "2. Building Spring Boot application..."
+                    sh 'mvn -v'
                     sh 'mvn clean compile -DskipTests'
                 }
             }
@@ -28,6 +26,7 @@ pipeline {
             steps {
                 script {
                     echo "Running tests..."
+                    sh 'mvn -v'
                     sh 'mvn test'
                 }
             }
