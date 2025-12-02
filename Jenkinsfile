@@ -4,7 +4,7 @@ pipeline {
         stage('GitHub') {
             steps {
                 echo '1. Clonage du projet depuis GitHub'
-                git branch: 'oussama',
+                git branch: 'amena',
                     url: 'https://github.com/BenGamraOussama/Student_Management.git'
 
                 script {
