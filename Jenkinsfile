@@ -27,7 +27,7 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    echo "Running tests..."
+                    echo "3. Running tests..."
                     sh 'mvn test'
                 }
             }
@@ -44,7 +44,7 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    echo 'Analyse de la qualité de code avec SonarQube (configuration fournie)'
+                    echo '5. Analyse de la qualité de code avec SonarQube (configuration fournie)'
                     // Utilise la configuration demandée. Par sécurité, si une variable d'environnement SONAR_TOKEN est fournie
                     // dans Jenkins, elle sera utilisée à la place du token statique ci-dessous.
                     sh """
