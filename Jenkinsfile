@@ -37,10 +37,9 @@ pipeline {
                     // dans Jenkins, elle sera utilisée à la place du token statique ci-dessous.
                     sh """
                         mvn clean verify sonar:sonar \
-                          -Dsonar.projectKey=Student-Management \
-                          -Dsonar.projectName='Student-Management' \
+                          -Dsonar.projectKey=student_mangement \
                           -Dsonar.host.url=http://localhost:9000 \
-                          -Dsonar.token=${env.SONAR_TOKEN ?: 'sqp_d11c08a81174a60c9a107e8a340d7f4f9d7386ef'}
+                          -Dsonar.login=sqp_d93de4b3ea522a65f02bae1f9a30f97b8e4c935d
                     """
                 }
             }
