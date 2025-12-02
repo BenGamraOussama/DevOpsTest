@@ -32,6 +32,15 @@ pipeline {
                 }
             }
         }
+        stage('Jar Packaging') {
+                    steps {
+                        script {
+                            echo "4. Packaging du fichier JAR..."
+                            sh 'mvn clean package -DskipTests'
+                        }
+                        archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                    }
+                }
         stage('SonarQube Analysis') {
             steps {
                 script {
