@@ -37,13 +37,16 @@ pipeline {
                     echo 'Analyse SonarQube en cours...'
 
                     withSonarQubeEnv('MySonarQube') {
-                        sh """
-                          mvn clean verify sonar:sonar \
-                            -Dsonar.projectKey=student_mangement \
-                            -Dsonar.host.url=http://localhost:9000 \
-                            -Dsonar.login=$SONAR_AUTH_TOKEN
-                         """
-                  }
+                                        sh """
+                                            mvn clean verify sonar:sonar \
+                                              -Dsonar.projectKey=student_mangement \
+                                              -Dsonar.projectName=student_mangement \
+                                              -Dsonar.sources=src/main/java \
+                                              -Dsonar.tests=src/test/java \
+                                              -Dsonar.java.binaries=target/classes \
+                                              -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                                        """
+                                    }
               }
           }
       }
