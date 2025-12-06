@@ -5,6 +5,9 @@ pipeline {
         LOCAL_IMAGE = 'student-management:local'
         // Image distante demandée par l'utilisateur pour le déploiement
         DEPLOY_IMAGE_DEFAULT = 'oussamabengamra/student-app:latest'
+        // Espace de nom et nom d'image pour le build/push
+        DOCKER_NAMESPACE = 'oussamabengamra'
+        DOCKER_IMAGE_NAME = 'student-app'
         // ID Jenkins Credentials par défaut pour Docker Hub (Username with password)
         // Si vous avez créé un credentials avec l'ID "dockerhub-creds", la pipeline
         // pourra l'utiliser automatiquement (voir stage "Docker Login (optionnel)")
@@ -109,22 +112,45 @@ pipeline {
         stage('Docker Build') {
             steps {
                 script {
-                    echo '6. Sélection de l\'image Docker pour le déploiement...'
-                    // Ne plus construire d'image locale: on déploie l'image publique spécifiée
-                    env.BUILT_IMAGE = env.DEPLOY_IMAGE_DEFAULT
-                    // Tirer la dernière version de l'image avant déploiement (meilleure fraîcheur)
-                    sh "docker pull ${env.BUILT_IMAGE} || true"
+                    echo '6. Construction de l\'image Docker locale...'
+                    // Construire l'image locale à partir du Dockerfile
+                    sh 'DOCKER_BUILDKIT=1 docker build -t ${LOCAL_IMAGE} .'
+
+                    // Déterminer les tags complets vers le registre
+                    def fullTag = "${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
+                    def latestTag = "${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE_NAME}:latest"
+
+                    // Taguer l'image locale avec les tags vers le registre
+                    sh "docker tag ${env.LOCAL_IMAGE} ${fullTag}"
+                    sh "docker tag ${env.LOCAL_IMAGE} ${latestTag}"
+
+                    // Enregistrer le tag principal à utiliser pour la suite (déploiement)
+                    env.BUILT_IMAGE = fullTag
+
+                    // Inspection sommaire (utile au debug)
+                    sh 'docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Size}}" | grep ${DOCKER_IMAGE_NAME} || true'
                 }
             }
         }
-        // Ce stage est optionnel: il ne s'exécute que si des identifiants de registre sont fournis.
-        // On aligne la condition avec le stage "Docker Build" en vérifiant des valeurs non vides (trim).
-        stage('Docker Push (désactivé)') {
-            // Désactivé volontairement: nous utilisons l'image publique "oussamabengamra/student-app:latest"
-            // et nous ne construisons/poussons plus d'image locale dans cette pipeline.
-            when { expression { return false } }
+        // Ce stage pousse l'image vers le registre si des identifiants sont fournis
+        stage('Docker Push') {
+            when {
+                anyOf {
+                    expression { return env.DOCKER_CREDENTIALS_ID?.trim() }
+                    allOf {
+                        expression { return env.DOCKERHUB_USER?.trim() }
+                        expression { return env.DOCKERHUB_TOKEN?.trim() }
+                    }
+                }
+            }
             steps {
-                echo 'Push désactivé: aucune image locale à publier.'
+                script {
+                    echo '7. Push de l\'image vers le registre...'
+                    def fullTag = "${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
+                    def latestTag = "${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE_NAME}:latest"
+                    sh "docker push ${fullTag}"
+                    sh "docker push ${latestTag}"
+                }
             }
         }
         stage('Deploy avec Docker Compose') {
@@ -133,7 +159,7 @@ pipeline {
                     echo '8. Déploiement/rafraîchissement du service via docker compose...'
                     // Utiliser docker compose pour (re)déployer l\'application Spring Boot
                     // Le service s\'appelle "spring-app" dans docker-compose.yaml
-                    // Toujours tenter un pull de l'image distante avant le déploiement
+                    // Tenter un pull (si l'image a été poussée), sinon l'image locale sera utilisée
                     sh "docker pull ${env.BUILT_IMAGE} || true"
                     // Déployer l'image construite via une variable d'environnement DEPLOY_IMAGE
                     sh "DEPLOY_IMAGE=${env.BUILT_IMAGE} docker compose up -d spring-app"
