@@ -67,15 +67,22 @@ pipeline {
                     def remoteImage = (env.DOCKERHUB_USER && env.DOCKERHUB_USER.trim()) ? "${env.DOCKERHUB_USER}/student-management" : null
                     if (remoteImage) {
                         sh """
-                          docker build -t ${remoteImage}:$BUILD_NUMBER -t ${remoteImage}:latest .
+                          DOCKER_BUILDKIT=1 docker build -t ${remoteImage}:$BUILD_NUMBER -t ${remoteImage}:latest .
                         """
                         env.BUILT_IMAGE = "${remoteImage}:$BUILD_NUMBER"
                     } else {
                         sh """
-                          docker build -t ${LOCAL_IMAGE} .
+                          DOCKER_BUILDKIT=1 docker build -t ${LOCAL_IMAGE} .
                         """
                         env.BUILT_IMAGE = LOCAL_IMAGE
                     }
+
+                    // Infos de qualité/visibilité sur l'image construite
+                    sh """
+                      echo "Image construite: ${env.BUILT_IMAGE}" > image-info.txt
+                      docker inspect ${env.BUILT_IMAGE} --format='ID={{.Id}}\nRepoTags={{.RepoTags}}\nRepoDigests={{.RepoDigests}}' >> image-info.txt || true
+                    """
+                    archiveArtifacts artifacts: 'image-info.txt', fingerprint: true
                 }
             }
         }
@@ -101,7 +108,12 @@ pipeline {
                     echo '8. Déploiement/rafraîchissement du service via docker compose...'
                     // Utiliser docker compose pour (re)déployer l\'application Spring Boot
                     // Le service s\'appelle "spring-app" dans docker-compose.yaml
-                    sh 'docker compose up -d --build spring-app'
+                    // Si une image distante est utilisée, tenter un pull avant le déploiement
+                    if (env.DOCKERHUB_USER && env.DOCKERHUB_USER.trim()) {
+                        sh "docker pull ${env.BUILT_IMAGE} || true"
+                    }
+                    // Déployer l'image construite via une variable d'environnement DEPLOY_IMAGE
+                    sh "DEPLOY_IMAGE=${env.BUILT_IMAGE} docker compose up -d spring-app"
                     sh 'docker ps --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.Names}}"'
                 }
             }
@@ -116,6 +128,10 @@ pipeline {
         }
         always {
             echo 'Nettoyage...'
+            // Nettoyage optionnel des images orphelines pour garder l'agent propre
+            script {
+                sh 'docker image prune -f || true'
+            }
         }
     }
 }

@@ -1,5 +1,8 @@
 services:
   spring-app:
+    # Image à déployer: par défaut l'image locale, peut être surchargée par DEPLOY_IMAGE
+    image: ${DEPLOY_IMAGE:-student-management:local}
+    # Optionnel: conserver la directive build pour permettre "docker compose build" quand souhaité
     build: .
     container_name: spring-app
     # Use host networking so that "localhost" inside the container resolves to the host machine
