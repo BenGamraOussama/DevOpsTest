@@ -1,23 +1,23 @@
 services:
-  spring-app:
+  student-app:
     # Image de l'application à utiliser (par défaut l'image distante demandée)
     image: ${DEPLOY_IMAGE:-oussamabengamra/student-app:latest}
-    container_name: spring-app
+    container_name: student-app
     ports:
       - "8089:8089"
     environment:
       # Redéfinir la datasource pour pointer vers le service MySQL du compose
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/studentdb?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/studentdb?createDatabaseIfNotExist=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-example}
       JAVA_OPTS: "-Djava.security.egd=file:/dev/./urandom"
     depends_on:
-      - mysql
+      - mysql-db
     restart: on-failure
 
-  mysql:
+  mysql-db:
     image: mysql:8.0
-    container_name: mysql
+    container_name: mysql-db
     environment:
       MYSQL_DATABASE: studentdb
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-example}

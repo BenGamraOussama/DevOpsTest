@@ -158,11 +158,11 @@ pipeline {
                 script {
                     echo '8. Déploiement/rafraîchissement du service via docker compose...'
                     // Utiliser docker compose pour (re)déployer l\'application Spring Boot
-                    // Le service s\'appelle "spring-app" dans docker-compose.yaml
+                    // Le service s\'appelle "student-app" dans docker-compose.yaml
                     // Tenter un pull (si l'image a été poussée), sinon l'image locale sera utilisée
                     sh "docker pull ${env.BUILT_IMAGE} || true"
                     // Déployer l'image construite via une variable d'environnement DEPLOY_IMAGE
-                    sh "DEPLOY_IMAGE=${env.BUILT_IMAGE} docker compose up -d spring-app"
+                    sh "DEPLOY_IMAGE=${env.BUILT_IMAGE} docker compose up -d student-app"
                     sh 'docker ps --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.Names}}"'
                 }
             }
