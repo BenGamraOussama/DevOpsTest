@@ -4,6 +4,7 @@
 *.iml
 target
 **/target
+!target/*.jar
 Dockerfile*
 docker-compose*.yml
 docker-compose*.yaml
