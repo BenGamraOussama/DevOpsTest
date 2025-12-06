@@ -3,6 +3,8 @@ pipeline {
     environment {
         // Nom d'image par défaut si aucun registre n'est fourni
         LOCAL_IMAGE = 'student-management:local'
+        // Image distante demandée par l'utilisateur pour le déploiement
+        DEPLOY_IMAGE_DEFAULT = 'oussamabengamra/student-app:latest'
     }
     triggers {
             githubPush()
@@ -62,44 +64,22 @@ pipeline {
         stage('Docker Build') {
             steps {
                 script {
-                    echo '6. Construction de l\'image Docker...'
-                    // Si un utilisateur Docker Hub est fourni, on prépare un nom d\'image distant
-                    def remoteImage = (env.DOCKERHUB_USER && env.DOCKERHUB_USER.trim()) ? "${env.DOCKERHUB_USER}/student-management" : null
-                    if (remoteImage) {
-                        sh """
-                          DOCKER_BUILDKIT=1 docker build -t ${remoteImage}:$BUILD_NUMBER -t ${remoteImage}:latest .
-                        """
-                        env.BUILT_IMAGE = "${remoteImage}:$BUILD_NUMBER"
-                    } else {
-                        sh """
-                          DOCKER_BUILDKIT=1 docker build -t ${LOCAL_IMAGE} .
-                        """
-                        env.BUILT_IMAGE = LOCAL_IMAGE
-                    }
-
-                    // Infos de qualité/visibilité sur l'image construite
-                    sh """
-                      echo "Image construite: ${env.BUILT_IMAGE}" > image-info.txt
-                      docker inspect ${env.BUILT_IMAGE} --format='ID={{.Id}}\nRepoTags={{.RepoTags}}\nRepoDigests={{.RepoDigests}}' >> image-info.txt || true
-                    """
-                    archiveArtifacts artifacts: 'image-info.txt', fingerprint: true
+                    echo '6. Sélection de l\'image Docker pour le déploiement...'
+                    // Ne plus construire d'image locale: on déploie l'image publique spécifiée
+                    env.BUILT_IMAGE = env.DEPLOY_IMAGE_DEFAULT
+                    // Tirer la dernière version de l'image avant déploiement (meilleure fraîcheur)
+                    sh "docker pull ${env.BUILT_IMAGE} || true"
                 }
             }
         }
-        stage('Docker Push (optionnel)') {
-            when {
-                expression { return env.DOCKERHUB_USER && env.DOCKERHUB_TOKEN }
-            }
+        // Ce stage est optionnel: il ne s'exécute que si des identifiants de registre sont fournis.
+        // On aligne la condition avec le stage "Docker Build" en vérifiant des valeurs non vides (trim).
+        stage('Docker Push (désactivé)') {
+            // Désactivé volontairement: nous utilisons l'image publique "oussamabengamra/student-app:latest"
+            // et nous ne construisons/poussons plus d'image locale dans cette pipeline.
+            when { expression { return false } }
             steps {
-                script {
-                    echo '7. Connexion et push de l\'image vers Docker Hub...'
-                    sh """
-                      echo '${DOCKERHUB_TOKEN}' | docker login -u '${DOCKERHUB_USER}' --password-stdin
-                      docker push ${DOCKERHUB_USER}/student-management:$BUILD_NUMBER
-                      docker push ${DOCKERHUB_USER}/student-management:latest
-                      docker logout || true
-                    """
-                }
+                echo 'Push désactivé: aucune image locale à publier.'
             }
         }
         stage('Deploy avec Docker Compose') {
@@ -108,10 +88,8 @@ pipeline {
                     echo '8. Déploiement/rafraîchissement du service via docker compose...'
                     // Utiliser docker compose pour (re)déployer l\'application Spring Boot
                     // Le service s\'appelle "spring-app" dans docker-compose.yaml
-                    // Si une image distante est utilisée, tenter un pull avant le déploiement
-                    if (env.DOCKERHUB_USER && env.DOCKERHUB_USER.trim()) {
-                        sh "docker pull ${env.BUILT_IMAGE} || true"
-                    }
+                    // Toujours tenter un pull de l'image distante avant le déploiement
+                    sh "docker pull ${env.BUILT_IMAGE} || true"
                     // Déployer l'image construite via une variable d'environnement DEPLOY_IMAGE
                     sh "DEPLOY_IMAGE=${env.BUILT_IMAGE} docker compose up -d spring-app"
                     sh 'docker ps --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.Names}}"'

@@ -1,18 +1,30 @@
 services:
   spring-app:
-    # Image à déployer: par défaut l'image locale, peut être surchargée par DEPLOY_IMAGE
-    image: ${DEPLOY_IMAGE:-student-management:local}
-    # Optionnel: conserver la directive build pour permettre "docker compose build" quand souhaité
-    build: .
+    # Image de l'application à utiliser (par défaut l'image distante demandée)
+    image: ${DEPLOY_IMAGE:-oussamabengamra/student-app:latest}
     container_name: spring-app
-    # Use host networking so that "localhost" inside the container resolves to the host machine
-    # This allows the app to connect to a MySQL instance running on the host at localhost:3306
-    network_mode: host
+    ports:
+      - "8089:8089"
     environment:
-      # Keep app defaults from application.properties (localhost DB, root user, empty password)
-      # Do not override datasource settings here so it uses localhost
+      # Redéfinir la datasource pour pointer vers le service MySQL du compose
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/studentdb?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-example}
       JAVA_OPTS: "-Djava.security.egd=file:/dev/./urandom"
+    depends_on:
+      - mysql
     restart: on-failure
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_DATABASE: studentdb
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-example}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
 
   sonarqube:
     image: sonarqube:9.9-community
@@ -30,3 +42,4 @@ volumes:
   sonarqube_data:
   sonarqube_extensions:
   sonarqube_logs:
+  mysql_data:
