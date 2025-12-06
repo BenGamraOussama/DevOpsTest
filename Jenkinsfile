@@ -5,6 +5,15 @@ pipeline {
         LOCAL_IMAGE = 'student-management:local'
         // Image distante demandée par l'utilisateur pour le déploiement
         DEPLOY_IMAGE_DEFAULT = 'oussamabengamra/student-app:latest'
+        // ID Jenkins Credentials par défaut pour Docker Hub (Username with password)
+        // Si vous avez créé un credentials avec l'ID "dockerhub-creds", la pipeline
+        // pourra l'utiliser automatiquement (voir stage "Docker Login (optionnel)")
+        DOCKER_CREDENTIALS_ID = 'dockerhub-creds'
+        // Registre Docker (laisser vide pour Docker Hub)
+        DOCKER_REGISTRY = ''
+        // Indicateurs runtime pour gérer le logout en fin de pipeline
+        DOCKER_LOGGED_IN = ''
+        DOCKER_REGISTRY_EFFECTIVE = ''
     }
     triggers {
             githubPush()
@@ -35,6 +44,42 @@ pipeline {
                 script {
                     echo "3. Running tests..."
                     sh 'mvn test'
+                }
+            }
+        }
+        // Connexion optionnelle à Docker Hub (ou autre registre) avant les pulls/deploys
+        stage('Docker Login (optionnel)') {
+            when {
+                anyOf {
+                    expression { return env.DOCKER_CREDENTIALS_ID?.trim() }
+                    allOf {
+                        expression { return env.DOCKERHUB_USER?.trim() }
+                        expression { return env.DOCKERHUB_TOKEN?.trim() }
+                    }
+                }
+            }
+            steps {
+                script {
+                    echo '6. Connexion au registre Docker...'
+                    def defaultHub = 'https://index.docker.io/v1/'
+                    def reg = env.DOCKER_REGISTRY?.trim()
+                    if (!reg || reg == 'docker.io' || reg == defaultHub) {
+                        reg = ''
+                    }
+
+                    if (env.DOCKER_CREDENTIALS_ID?.trim()) {
+                        withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS_ID, usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
+                            sh """
+                              echo "${REG_PASS}" | docker login ${reg} -u "${REG_USER}" --password-stdin
+                            """
+                        }
+                    } else {
+                        sh """
+                          echo "${DOCKERHUB_TOKEN}" | docker login ${reg} -u "${DOCKERHUB_USER}" --password-stdin
+                        """
+                    }
+                    env.DOCKER_LOGGED_IN = 'true'
+                    env.DOCKER_REGISTRY_EFFECTIVE = reg
                 }
             }
         }
@@ -109,6 +154,11 @@ pipeline {
             // Nettoyage optionnel des images orphelines pour garder l'agent propre
             script {
                 sh 'docker image prune -f || true'
+                // Se déconnecter du registre si on s'est connecté pendant le build
+                if (env.DOCKER_LOGGED_IN?.trim()) {
+                    def reg = env.DOCKER_REGISTRY_EFFECTIVE?.trim()
+                    sh "docker logout ${reg ?: ''} || true"
+                }
             }
         }
     }
