@@ -21,8 +21,8 @@ services:
     environment:
       MYSQL_DATABASE: studentdb
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-example}
-    ports:
-      - "3306:3306"
+    # Ne pas exposer le port 3306 sur l'hôte pour éviter les conflits sur les agents CI
+    # L'application y accède via le réseau interne Compose (hôte "mysql", port 3306)
     volumes:
       - mysql_data:/var/lib/mysql
 
