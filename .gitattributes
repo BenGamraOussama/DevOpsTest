@@ -1,2 +1,7 @@
 /mvnw text eol=lf
 *.cmd text eol=crlf
+# Force UTF-8 for properties to avoid encoding issues
+*.properties text working-tree-encoding=UTF-8
+
+# Explicit rule for the application.properties used at build time
+src/main/resources/application.properties text working-tree-encoding=UTF-8
