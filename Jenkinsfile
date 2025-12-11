@@ -84,9 +84,7 @@ pipeline {
                 }
             }
         }
-
-        // Nettoyage des ressources existantes (conteneur/image) si elles bloquent le déploiement
-        stage('Docker Cleanup (existant)') {
+        stage('Docker Cleanup') {
             steps {
                 script {
                     echo '6.b. Nettoyage des ressources Docker existantes...'
@@ -98,19 +96,6 @@ pipeline {
 
                     // Nettoyer les images dangling
                     sh 'docker images -f dangling=true -q | xargs -r docker rmi -f || true'
-                }
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                script {
-                    echo '7. Déploiement avec Docker Compose...'
-                    // Essayer de récupérer l'image si poussée sinon continuer avec locale
-                    sh 'docker pull ${BUILT_IMAGE} || true'
-                    // Forcer la recréation et supprimer les orphelins
-                    sh "DEPLOY_IMAGE=${env.BUILT_IMAGE ?: env.LOCAL_IMAGE} docker compose up -d --force-recreate --remove-orphans student-app"
-                    sh 'docker ps --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.Names}}"'
                 }
             }
         }
