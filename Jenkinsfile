@@ -1,6 +1,7 @@
 pipeline {
     agent any
-
+    environment {
+    }
     triggers {
             githubPush()
         }
@@ -65,15 +66,6 @@ pipeline {
         }
         always {
             echo 'Nettoyage...'
-            // Nettoyage optionnel des images orphelines pour garder l'agent propre
-            script {
-                sh 'docker image prune -f || true'
-                // Se déconnecter du registre si on s'est connecté pendant le build
-                if (env.DOCKER_LOGGED_IN?.trim()) {
-                    def reg = env.DOCKER_REGISTRY_EFFECTIVE?.trim()
-                    sh "docker logout ${reg ?: ''} || true"
-                }
-            }
         }
     }
 }
