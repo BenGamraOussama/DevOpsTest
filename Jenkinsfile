@@ -1,9 +1,12 @@
 pipeline {
     agent any
+
     triggers {
-            githubPush()
-        }
+        githubPush()
+    }
+
     stages {
+
         stage('GitHub') {
             steps {
                 echo '1. Clonage du projet depuis GitHub'
@@ -11,11 +14,11 @@ pipeline {
                     url: 'https://github.com/BenGamraOussama/Student_Management.git'
 
                 script {
-                    // Afficher les informations du commit
                     sh 'git log -1 --oneline'
                 }
             }
         }
+
         stage('Build') {
             steps {
                 script {
@@ -24,6 +27,7 @@ pipeline {
                 }
             }
         }
+
         stage('Test') {
             steps {
                 script {
@@ -32,15 +36,17 @@ pipeline {
                 }
             }
         }
+
         stage('Jar Packaging') {
-                    steps {
-                        script {
-                            echo "4. Packaging du fichier JAR..."
-                            sh 'mvn clean package -DskipTests'
-                        }
-                        archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-                    }
+            steps {
+                script {
+                    echo "4. Packaging du fichier JAR..."
+                    sh 'mvn clean package -DskipTests'
+                }
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+            }
         }
+
         stage('SonarQube Analysis') {
             steps {
                 script {
@@ -55,6 +61,7 @@ pipeline {
                 }
             }
         }
+    }
     post {
         success {
             echo 'SUCCÈS : Build et push réussis!'
