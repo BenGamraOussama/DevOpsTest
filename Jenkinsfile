@@ -43,6 +43,7 @@ pipeline {
                         archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
                     }
                 }
+        }
         stage('SonarQube Analysis') {
             steps {
                 script {
