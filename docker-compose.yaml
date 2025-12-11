@@ -2,6 +2,8 @@ services:
   student-app:
     # Image de l'application à utiliser (par défaut l'image distante demandée)
     image: ${DEPLOY_IMAGE:-oussamabengamra/student-app:latest}
+    # Tirer systématiquement l'image si elle existe à distance pour éviter d'utiliser une ancienne version
+    pull_policy: always
     container_name: student-app
     ports:
       - "8089:8089"
