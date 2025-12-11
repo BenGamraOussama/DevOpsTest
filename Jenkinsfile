@@ -114,7 +114,8 @@ pipeline {
                 script {
                     echo '6. Construction de l\'image Docker locale...'
                     // Construire l'image locale à partir du Dockerfile
-                    sh 'DOCKER_BUILDKIT=1 docker build -t ${LOCAL_IMAGE} .'
+                    // --pull pour récupérer les mises à jour des images de base
+                    sh 'DOCKER_BUILDKIT=1 docker build --pull -t ${LOCAL_IMAGE} .'
 
                     // Déterminer les tags complets vers le registre
                     def fullTag = "${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
@@ -129,6 +130,22 @@ pipeline {
 
                     // Inspection sommaire (utile au debug)
                     sh 'docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Size}}" | grep ${DOCKER_IMAGE_NAME} || true'
+                }
+            }
+        }
+        // S'assure que les conteneurs/images existants ne bloquent pas le déploiement
+        stage('Docker Cleanup (existant)') {
+            steps {
+                script {
+                    echo '6.b. Nettoyage des ressources Docker existantes...'
+                    // Arrêter et supprimer le conteneur existant si présent
+                    sh 'docker ps -a --format "{{.Names}}" | grep -w student-app >/dev/null && docker rm -f student-app || true'
+
+                    // Supprimer l'image :latest locale de la même appli si elle existe (pour éviter les conflits)
+                    sh 'docker images --format "{{.Repository}}:{{.Tag}}" | grep -w ${DOCKER_NAMESPACE}/${DOCKER_IMAGE_NAME}:latest >/dev/null && docker rmi -f ${DOCKER_NAMESPACE}/${DOCKER_IMAGE_NAME}:latest || true'
+
+                    // Nettoyer les images dangling
+                    sh 'docker images -f dangling=true -q | xargs -r docker rmi -f || true'
                 }
             }
         }
@@ -162,7 +179,8 @@ pipeline {
                     // Tenter un pull (si l'image a été poussée), sinon l'image locale sera utilisée
                     sh "docker pull ${env.BUILT_IMAGE} || true"
                     // Déployer l'image construite via une variable d'environnement DEPLOY_IMAGE
-                    sh "DEPLOY_IMAGE=${env.BUILT_IMAGE} docker compose up -d student-app"
+                    // --force-recreate pour remplacer un conteneur existant, --remove-orphans pour nettoyer les anciens services
+                    sh "DEPLOY_IMAGE=${env.BUILT_IMAGE} docker compose up -d --force-recreate --remove-orphans student-app"
                     sh 'docker ps --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.Names}}"'
                 }
             }
