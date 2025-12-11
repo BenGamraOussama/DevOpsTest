@@ -1,7 +1,5 @@
 pipeline {
     agent any
-    environment {
-    }
     triggers {
             githubPush()
         }
@@ -42,7 +40,6 @@ pipeline {
                         }
                         archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
                     }
-                }
         }
         stage('SonarQube Analysis') {
             steps {
