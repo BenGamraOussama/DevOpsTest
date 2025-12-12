@@ -69,36 +69,20 @@ pipeline {
                 }
             }
         }
+        stage('Build Docker Image') {
+        			steps {
+        				sh 'docker build -t docker build -t oussamabengamra/student-app:latest . .'
+        			}
+        		}
 
-        // --- STAGES DOCKER AJOUTÉS ---
-        stage('Docker Build') {
-            steps {
-                script {
-                    echo "6. Construction de l'image Docker locale..."
-                    // Construire l'image locale à partir du Dockerfile et mettre à jour l'image de base
-                    sh 'DOCKER_BUILDKIT=1 docker build --pull -t ${LOCAL_IMAGE} .'
-
-                    // Tag unique pour ce build
-                    env.BUILT_IMAGE = "${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
-                    sh "docker tag ${LOCAL_IMAGE} ${BUILT_IMAGE}"
-                }
-            }
-        }
-        stage('Docker Cleanup') {
-            steps {
-                script {
-                    echo '6.b. Nettoyage des ressources Docker existantes...'
-                    // Arrêter et supprimer le conteneur existant si présent
-                    sh 'docker ps -a --format "{{.Names}}" | grep -w student-app >/dev/null && docker rm -f student-app || true'
-
-                    // Supprimer l'image :latest locale si elle existe (pour éviter les conflits de digest)
-                    sh 'docker images --format "{{.Repository}}:{{.Tag}}" | grep -w ${DOCKER_NAMESPACE}/${DOCKER_IMAGE_NAME}:latest >/dev/null && docker rmi -f ${DOCKER_NAMESPACE}/${DOCKER_IMAGE_NAME}:latest || true'
-
-                    // Nettoyer les images dangling
-                    sh 'docker images -f dangling=true -q | xargs -r docker rmi -f || true'
-                }
-            }
-        }
+        		stage('Push Docker Image') {
+        			steps {
+        				withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PSW')]) {
+        					sh 'echo $DOCKER_PSW | docker login -u $DOCKER_USER --password-stdin'
+        					sh 'docker push docker build -t oussamabengamra/student-app:latest .'
+        				}
+        			}
+        		}
     }
     post {
         success {
