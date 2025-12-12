@@ -70,19 +70,19 @@ pipeline {
             }
         } */
         stage('Build Docker Image') {
-        			steps {
-        				sh 'docker build -t docker build -t oussamabengamra/student-app:latest . .'
-        			}
-        		}
+                   steps {
+                        sh 'docker build -t $LOCAL_IMAGE .'
+                    }
+        }
 
-        		stage('Push Docker Image') {
-        			steps {
-        				withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PSW')]) {
-        					sh 'echo $DOCKER_PSW | docker login -u $DOCKER_USER --password-stdin'
-        					sh 'docker push docker build -t oussamabengamra/student-app:latest .'
-        				}
-        			}
-        		}
+        stage('Push Docker Image') {
+                    steps {
+                        withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PSW')]) {
+                            sh 'echo $DOCKER_PSW | docker login -u $DOCKER_USER --password-stdin'
+                            sh 'docker push $LOCAL_IMAGE'
+                        }
+                    }
+                }
     }
     post {
         success {
