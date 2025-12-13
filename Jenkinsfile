@@ -75,15 +75,27 @@ pipeline {
                     }
         }
 
-        stage('Push Docker Image') {
+        stage('Login Docker Hub') {
                     steps {
-                        withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PSW')]) {
-                            sh 'echo $DOCKER_PSW | docker login -u $DOCKER_USER --password-stdin'
-                            sh 'docker push $LOCAL_IMAGE'
+                        echo '5. Authentification à Docker Hub'
+                        withCredentials([usernamePassword(
+                            credentialsId: 'docker-hub-credentials',
+                            usernameVariable: 'DOCKER_USER',
+                            passwordVariable: 'DOCKER_PASS'
+                        )]) {
+                            sh 'echo dckr_pat_Cg8oFmnAweP23TCKr8HfFTyxXzg | docker login -u oussamabengamra --password-stdin'
                         }
                     }
+        }
+
+         stage('Push Image Docker Hub') {
+                    steps {
+                        echo '6. Push vers Docker Hub'
+                        sh 'docker push oussamabengamra/student-app:latest'
+                    }
                 }
-    }
+         }
+
     post {
         success {
             echo 'SUCCÈS : Build et push réussis!'
