@@ -11,13 +11,6 @@ pipeline {
         DOCKER_IMAGE_NAME = 'student-app'
         // Image locale par défaut
         LOCAL_IMAGE = 'oussamabengamra/student-app:latest'
-        // flag to track whether push should run
-        DOCKER_PUSH_ENABLED = 'false'
-    }
-
-    // add an optional parameter to override credentials id at build time
-    parameters {
-        string(name: 'DOCKERHUB_CREDENTIALS_ID', defaultValue: 'docker-hub-credentials', description: 'Jenkins credentials ID for Docker Hub (optional)')
     }
 
     stages {
@@ -77,63 +70,35 @@ pipeline {
             }
         } */
         stage('Build Docker Image') {
-            steps {
-                script {
-                    echo "5. Construction de l'image Docker..."
-                    // use explicit env expansion to avoid ambiguity
-                    sh "docker build -t ${env.LOCAL_IMAGE} ."
-                }
-            }
+                   steps {
+                        sh 'docker build -t $LOCAL_IMAGE .'
+                    }
         }
 
         stage('Login Docker Hub') {
-            steps {
-                echo '5. Authentification à Docker Hub'
-                script {
-                  def credId = params.DOCKERHUB_CREDENTIALS_ID ?: 'docker-hub-credentials'
-                  try {
-                    withCredentials([usernamePassword(credentialsId: credId, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                      sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
-                      env.DOCKER_PUSH_ENABLED = 'true'
+                    steps {
+                        echo '5. Authentification à Docker Hub'
+                        withCredentials([usernamePassword(
+                            credentialsId: 'docker-hub-credentials',
+                            usernameVariable: 'DOCKER_USER',
+                            passwordVariable: 'DOCKER_PASS'
+                        )]) {
+                            sh 'echo dckr_pat_I-jMSmyrmntGpOyYaDf04JR72Iw | docker login -u oussamabengamra --password-stdin'
+                        }
                     }
-                  } catch (err) {
-                    echo "Skipping Docker login: credentials '${credId}' not found or login failed. Error: ${err}"
-                    env.DOCKER_PUSH_ENABLED = 'false'
-                  }
                 }
-            }
-        }
 
-         stage('Push Image Docker Hub') {
-            when {
-                expression { return env.DOCKER_PUSH_ENABLED == 'true' }
-            }
-            steps {
-                echo '6. Push vers Docker Hub'
-                script {
-                    // ensure image is tagged with the registry namespace/name then push
-                    sh "docker tag ${env.LOCAL_IMAGE} ${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE_NAME}:latest || true"
-                    sh "docker push ${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE_NAME}:latest"
+                stage('Push Image Docker Hub') {
+                    steps {
+                        echo '6. Push vers Docker Hub'
+                        sh 'docker push oussamabengamra/student-app:latest'
+                    }
                 }
             }
-            post {
-                unsuccessful {
-                    echo 'Push failed'
-                }
-            }
-        }
-
-    }
 
     post {
         success {
-            script {
-                if (env.DOCKER_PUSH_ENABLED == 'true') {
-                    echo 'SUCCÈS : Build et push réussis!'
-                } else {
-                    echo "SUCCÈS : Build réussi, push Docker Hub ignoré (identifiants manquants ou login échoué)."
-                }
-            }
+            echo 'SUCCÈS : Build et push réussis!'
         }
         failure {
             echo 'ÉCHEC : Build failed!'
