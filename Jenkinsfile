@@ -76,17 +76,14 @@ pipeline {
         }
 
         stage('Login Docker Hub') {
-                    steps {
-                        echo '5. Authentification à Docker Hub'
-                        withCredentials([usernamePassword(
-                            credentialsId: 'docker-hub-credentials',
-                            usernameVariable: 'DOCKER_USER',
-                            passwordVariable: 'DOCKER_PASS'
-                        )]) {
-                            sh 'echo dckr_pat_I-jMSmyrmntGpOyYaDf04JR72Iw | docker login -u oussamabengamra --password-stdin'
-                        }
-                    }
+            steps {
+                echo '5. Authentification à Docker Hub'
+                script {
+                    // Use the provided token to login to Docker Hub
+                    sh "echo 'dckr_pat_I-jMSmyrmntGpOyYaDf04JR72Iw' | docker login -u ${env.DOCKER_NAMESPACE} --password-stdin"
                 }
+            }
+        }
 
                 stage('Push Image Docker Hub') {
                     steps {
