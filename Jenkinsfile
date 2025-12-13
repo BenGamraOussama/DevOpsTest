@@ -6,18 +6,17 @@ pipeline {
     }
 
     environment {
-        // Paramètres Docker par défaut
+        // Docker Hub configuration
+        DOCKER_REGISTRY = 'docker.io'
         DOCKER_NAMESPACE = 'oussamabengamra'
         DOCKER_IMAGE_NAME = 'student-app'
-        // Image locale par défaut
-        LOCAL_IMAGE = 'oussamabengamra/student-app:latest'
+        LOCAL_IMAGE = "${DOCKER_NAMESPACE}/${DOCKER_IMAGE_NAME}:latest"
 
-        // flag used to decide whether to push the image
-        DOCKER_PUSH_ENABLED = 'false'
+        // Flag to control Docker push
+        DOCKER_PUSH_ENABLED = 'true'  // Change to 'false' if you don't want to push by default
     }
 
     stages {
-
         stage('GitHub') {
             steps {
                 echo '1. Clonage du projet depuis GitHub'
@@ -60,51 +59,57 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                // build after login so base image pulls use authenticated access when available
-                sh 'docker build -t $LOCAL_IMAGE .'
+                script {
+                    echo '5. Building Docker image...'
+                    sh "docker build -t ${LOCAL_IMAGE} ."
+                }
             }
         }
-stage('Push to Registry') {
+
+        stage('Push to Docker Hub') {
             when {
-                branch 'main' // ou 'master'
+                allOf {
+                    expression { env.DOCKER_PUSH_ENABLED == 'true' }
+                    branch 'main'  // Optionnel : seulement pour la branche main
+                }
             }
             steps {
                 script {
-                    echo '8. Push de l\'image vers le registry...'
+                    echo '6. Push vers Docker Hub...'
                     withCredentials([usernamePassword(
-                        credentialsId: 'docker-hub-token',
-                        usernameVariable: 'oussamabengamra',
-                        passwordVariable: 'dckr_pat_iUmaty9ktMQvSXbt8s5XGoQvDPA'
+                        credentialsId: 'docker-hub-token',  // ID des credentials dans Jenkins
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
                     )]) {
                         sh """
-                            docker login -u ${DOCKER_USER} -p ${DOCKER_PASS} ${DOCKER_REGISTRY}
-                            docker push oussamabengamra/student-app:latest
+                            echo "Login to Docker Hub..."
+                            docker login -u ${DOCKER_USER} -p ${DOCKER_PASS}
+
+                            echo "Pushing image..."
+                            docker push ${LOCAL_IMAGE}
+
+                            echo "Image pushed successfully!"
                         """
                     }
                 }
             }
         }
     }
-        stage('Push Image Docker Hub') {
-            when {
-                expression { env.DOCKER_PUSH_ENABLED == 'true' }
-            }
-            steps {
-                echo '6. Push vers Docker Hub'
-                sh 'docker push $LOCAL_IMAGE'
-            }
-        }
-    }
 
     post {
         success {
-            echo 'SUCCÈS : Build et push réussis!'
+            echo 'SUCCÈS : Build et déploiement réussis!'
+            echo "Application disponible sur: http://localhost:8080"
         }
         failure {
             echo 'ÉCHEC : Build failed!'
         }
         always {
             echo 'Nettoyage...'
+            script {
+                // Nettoyage des conteneurs arrêtés
+                sh 'docker container prune -f || true'
+            }
         }
     }
 }
