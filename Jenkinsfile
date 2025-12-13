@@ -71,15 +71,15 @@ pipeline {
         } */
         stage('Build Docker Image') {
                    steps {
-                        sh 'sudo docker build -t $LOCAL_IMAGE .'
+                        sh 'docker build -t $LOCAL_IMAGE .'
                     }
         }
 
         stage('Push Docker Image') {
                     steps {
                         withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PSW')]) {
-                            sh 'echo $DOCKER_PSW | sudo docker login -u $DOCKER_USER --password-stdin'
-                            sh 'sudo docker push $LOCAL_IMAGE'
+                            sh 'echo $DOCKER_PSW | docker login -u $DOCKER_USER --password-stdin'
+                            sh 'docker push $LOCAL_IMAGE'
                         }
                     }
                 }
