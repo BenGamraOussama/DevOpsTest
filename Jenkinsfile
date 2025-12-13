@@ -58,34 +58,33 @@ pipeline {
             }
         }
 
-        // Login using Jenkins-stored username/password credential (docker-hub-token)
-        stage('Login Docker Hub') {
-            steps {
-                echo '5. Authentification à Docker Hub'
-                script {
-                    try {
-                        // Use username/password credential stored as 'docker-hub-token'
-                        withCredentials([usernamePassword(credentialsId: 'docker-hub-token', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                            // pass the password via stdin to avoid leaking secrets in logs
-                            sh(script: 'printf "%s" "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin')
-                        }
-                        env.DOCKER_PUSH_ENABLED = 'true'
-                        echo 'Docker login successful.'
-                    } catch (err) {
-                        echo "Skipping Docker login: ${err.getMessage()}"
-                        env.DOCKER_PUSH_ENABLED = 'false'
-                    }
-                }
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 // build after login so base image pulls use authenticated access when available
                 sh 'docker build -t $LOCAL_IMAGE .'
             }
         }
-
+stage('Push to Registry') {
+            when {
+                branch 'main' // ou 'master'
+            }
+            steps {
+                script {
+                    echo '8. Push de l\'image vers le registry...'
+                    withCredentials([usernamePassword(
+                        credentialsId: 'docker-hub-token',
+                        usernameVariable: 'oussamabengamra',
+                        passwordVariable: 'dckr_pat_iUmaty9ktMQvSXbt8s5XGoQvDPA'
+                    )]) {
+                        sh """
+                            docker login -u ${DOCKER_USER} -p ${DOCKER_PASS} ${DOCKER_REGISTRY}
+                            docker push oussamabengamra/student-app:latest
+                        """
+                    }
+                }
+            }
+        }
+    }
         stage('Push Image Docker Hub') {
             when {
                 expression { env.DOCKER_PUSH_ENABLED == 'true' }
