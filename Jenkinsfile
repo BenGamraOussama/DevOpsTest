@@ -71,14 +71,12 @@ pipeline {
                 script {
                     try {
                         if (params.DOCKERHUB_TOKEN?.trim()) {
-                            // Prefer token provided as pipeline parameter
-                            sh(script: "echo '${params.DOCKERHUB_TOKEN}' | docker login -u '${params.DOCKERHUB_USERNAME?.trim() ? params.DOCKERHUB_USERNAME : env.DOCKER_NAMESPACE}' --password-stdin")
+                            // Use token provided at build time (avoid logging it)
+                            sh(script: "printf '%s' \"${params.DOCKERHUB_TOKEN}\" | docker login -u '${params.DOCKERHUB_USERNAME?.trim() ? params.DOCKERHUB_USERNAME : env.DOCKER_NAMESPACE}' --password-stdin")
                         } else {
-                            // Fall back to Jenkins-stored credential id 'docker-hub-token'
+                            // Use the Jenkins-stored credential 'docker-hub-token'
                             withCredentials([string(credentialsId: 'docker-hub-token', variable: 'DOCKER_TOKEN')]) {
-                                sh '''
-                                    echo "$DOCKER_TOKEN" | docker login -u "${env.DOCKER_NAMESPACE}" --password-stdin
-                                '''
+                                sh(script: 'printf "%s" "$DOCKER_TOKEN" | docker login -u "${env.DOCKER_NAMESPACE}" --password-stdin')
                             }
                         }
                         env.DOCKER_PUSH_ENABLED = 'true'
