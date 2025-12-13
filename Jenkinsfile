@@ -113,6 +113,8 @@ pipeline {
             }
         }
 
+    }
+
     post {
         success {
             echo 'SUCCÈS : Build et push réussis!'
