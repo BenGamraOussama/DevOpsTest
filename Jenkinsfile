@@ -5,12 +5,6 @@ pipeline {
         githubPush()
     }
 
-    // Add optional parameters to pass a token/username at runtime
-    parameters {
-        string(name: 'DOCKERHUB_USERNAME', defaultValue: '', description: 'Optional Docker Hub username (defaults to DOCKER_NAMESPACE)')
-        password(name: 'DOCKERHUB_TOKEN', defaultValue: '', description: 'Optional Docker Hub token (preferred over stored credentials)')
-    }
-
     environment {
         // Paramètres Docker par défaut
         DOCKER_NAMESPACE = 'oussamabengamra'
@@ -64,20 +58,16 @@ pipeline {
             }
         }
 
-        // Move Login before the Docker build so pulls of base images can succeed
+        // Login using Jenkins-stored username/password credential (docker-hub-token)
         stage('Login Docker Hub') {
             steps {
                 echo '5. Authentification à Docker Hub'
                 script {
                     try {
-                        if (params.DOCKERHUB_TOKEN?.trim()) {
-                            // Use token provided at build time (avoid logging it)
-                            sh(script: "printf '%s' \"${params.DOCKERHUB_TOKEN}\" | docker login -u '${params.DOCKERHUB_USERNAME?.trim() ? params.DOCKERHUB_USERNAME : env.DOCKER_NAMESPACE}' --password-stdin")
-                        } else {
-                            // Use the Jenkins-stored credential 'docker-hub-token'
-                            withCredentials([string(credentialsId: 'docker-hub-token', variable: 'DOCKER_TOKEN')]) {
-                                sh(script: 'printf "%s" "$DOCKER_TOKEN" | docker login -u "${env.DOCKER_NAMESPACE}" --password-stdin')
-                            }
+                        // Use username/password credential stored as 'docker-hub-token'
+                        withCredentials([usernamePassword(credentialsId: 'docker-hub-token', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                            // pass the password via stdin to avoid leaking secrets in logs
+                            sh(script: 'printf "%s" "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin')
                         }
                         env.DOCKER_PUSH_ENABLED = 'true'
                         echo 'Docker login successful.'
