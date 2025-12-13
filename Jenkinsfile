@@ -13,6 +13,11 @@ pipeline {
         LOCAL_IMAGE = 'oussamabengamra/student-app:latest'
     }
 
+    // add an optional parameter to override credentials id at build time
+    parameters {
+        string(name: 'DOCKERHUB_CREDENTIALS_ID', defaultValue: 'docker-hub-credentials', description: 'Jenkins credentials ID for Docker Hub (optional)')
+    }
+
     stages {
 
         stage('GitHub') {
@@ -76,25 +81,37 @@ pipeline {
         }
 
         stage('Login Docker Hub') {
-                    steps {
-                        echo '5. Authentification à Docker Hub'
-                        withCredentials([usernamePassword(
-                            credentialsId: 'docker-hub-credentials',
-                            usernameVariable: 'DOCKER_USER',
-                            passwordVariable: 'DOCKER_PASS'
-                        )]) {
-                            sh 'echo dckr_pat_Cg8oFmnAweP23TCKr8HfFTyxXzg | docker login -u oussamabengamra --password-stdin'
-                        }
+            steps {
+                echo '5. Authentification à Docker Hub'
+                script {
+                  def credId = params.DOCKERHUB_CREDENTIALS_ID ?: 'docker-hub-credentials'
+                  try {
+                    withCredentials([usernamePassword(credentialsId: credId, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                      sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
+                      env.DOCKER_PUSH_ENABLED = 'true'
                     }
+                  } catch (err) {
+                    echo "Skipping Docker login: credentials '${credId}' not found or login failed. Error: ${err}"
+                    env.DOCKER_PUSH_ENABLED = 'false'
+                  }
+                }
+            }
         }
 
          stage('Push Image Docker Hub') {
-                    steps {
-                        echo '6. Push vers Docker Hub'
-                        sh 'docker push oussamabengamra/student-app:latest'
-                    }
+            when {
+                expression { return env.DOCKER_PUSH_ENABLED == 'true' }
+            }
+            steps {
+                echo '6. Push vers Docker Hub'
+                sh 'docker push oussamabengamra/student-app:latest'
+            }
+            post {
+                unsuccessful {
+                    echo 'Push failed'
                 }
-         }
+            }
+        }
 
     post {
         success {
