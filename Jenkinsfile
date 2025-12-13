@@ -77,7 +77,7 @@ pipeline {
                       echo '5. Authentification à Docker Hub'
                       script {
                           // Use the provided token to login to Docker Hub
-                          sh "echo '' | docker login -u ${env.DOCKER_NAMESPACE} --password-stdin"
+                          sh "echo '.' | docker login -u ${env.DOCKER_NAMESPACE} --password-stdin"
                       }
                   }
               }
