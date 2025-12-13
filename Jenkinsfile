@@ -13,6 +13,13 @@ pipeline {
                 }
             }
         }
+         environment {
+             DOCKER_USERNAME = 'ghofraneidriss'
+             DOCKER_REPOSITORY = 'images'
+             DOCKER_TAG = 'latest'
+             DOCKER_IMAGE = 'ghofraneidriss/images:latest'
+                  }
+
         stage('Build') {
             steps {
                 script {
@@ -31,6 +38,15 @@ pipeline {
                 }
             }
         }
+            stage('Jar Packaging') {
+                            steps {
+                                script {
+                                    echo "4. Packaging du fichier JAR..."
+                                    sh 'mvn clean package -DskipTests'
+                                }
+                                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                            }
+                        }
         stage('SonarQube Analysis') {
             steps {
                 script {
@@ -50,6 +66,29 @@ pipeline {
               }
           }
       }
+            stage('Build Docker Image') {
+                         steps {
+                              sh 'docker build -t $LOCAL_IMAGE .'
+                          }
+              }
+
+              stage('Login Docker Hub') {
+                  steps {
+                      echo '5. Authentification à Docker Hub'
+                      script {
+                          // Use the provided token to login to Docker Hub
+                          sh "echo 'dckr_pat_aK4BRTRCrIFUuoWwl_cdPv9U-9I' | docker login -u ${env.DOCKER_NAMESPACE} --password-stdin"
+                      }
+                  }
+              }
+
+                      stage('Push Image Docker Hub') {
+                          steps {
+                              echo '6. Push vers Docker Hub'
+                              sh 'docker push ghofraneidriss/student-app:latest'
+                          }
+                      }
+                  }
 
     }
     post {
