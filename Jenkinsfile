@@ -72,13 +72,7 @@ pipeline {
                           }
               }
 
-              stage('Login Docker Hub') {
-                  steps {
-                      echo '5. Authentification à Docker Hub'
-                      script {
-                      }
-                  }
-              }
+
 
                       stage('Push Image Docker Hub') {
                           steps {
