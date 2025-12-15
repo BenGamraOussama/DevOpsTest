@@ -132,9 +132,7 @@ pipeline {
             steps {
                 script {
                     echo '7. Push de l\'image vers le registre...'
-                    def fullTag = "${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
                     def latestTag = "${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE_NAME}:latest"
-                    sh "docker push ${fullTag}"
                     sh "docker push ${latestTag}"
                 }
             }
