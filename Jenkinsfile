@@ -107,5 +107,3 @@ pipeline {
             echo 'Nettoyage...'
         }
     }
-
-}
