@@ -14,11 +14,11 @@ pipeline {
             }
         }
            environment {
-             DOCKER_USERNAME = 'ghofraneidriss'
-             DOCKER_REPOSITORY = 'images'
-             DOCKER_TAG = 'latest'
-             DOCKER_IMAGE = 'ghofraneidriss/images:latest'
-                  }
+                 DOCKER_USERNAME = 'ghofraneidriss'
+                 DOCKER_REPOSITORY = 'student-app'
+                 DOCKER_TAG = 'latest'
+                 DOCKER_IMAGE = "${DOCKER_USERNAME}/${DOCKER_REPOSITORY}:${DOCKER_TAG}"
+             }
         stage('Build') {
             steps {
                 script {
@@ -67,35 +67,35 @@ pipeline {
       }
 
     }
-      stage('Push to Docker Hub') {
-            when {
-                allOf {
-                    expression { env.DOCKER_PUSH_ENABLED == 'true' }
-                    branch 'main'  // Optionnel : seulement pour la branche main
-                }
-            }
-            steps {
-                script {
-                    echo '6. Push vers Docker Hub...'
-                    withCredentials([usernamePassword(
-                        credentialsId: 'docker-hub-token',  // ID des credentials dans Jenkins
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS'
-                    )]) {
-                        sh """
-                            echo "Login to Docker Hub..."
-                            docker login -u ${DOCKER_USER} -p ${DOCKER_PASS}
+          stages {
 
-                            echo "Pushing image..."
-                            docker push ${LOCAL_IMAGE}
+              stage('Build Docker Image') {
+                  steps {
+                      echo 'Building Docker image'
+                      sh 'docker build -t $DOCKER_IMAGE .'
+                  }
+              }
 
-                            echo "Image pushed successfully!"
-                        """
-                    }
-                }
-            }
-        }
-    }
+              stage('Login Docker Hub') {
+                  steps {
+                      echo 'Login to Docker Hub'
+                      withCredentials([usernamePassword(
+                          credentialsId: 'dockerhub-creds',
+                          usernameVariable: 'DOCKER_USER',
+                          passwordVariable: 'DOCKER_PASS'
+                      )]) {
+                          sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                      }
+                  }
+              }
+
+              stage('Push Docker Image') {
+                  steps {
+                      echo 'Pushing image to Docker Hub'
+                      sh 'docker push $DOCKER_IMAGE'
+                  }
+              }
+          }
 
     post {
         success {
