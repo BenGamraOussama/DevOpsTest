@@ -11,7 +11,7 @@ pipeline {
         // ID Jenkins Credentials par défaut pour Docker Hub (Username with password)
         // Si vous avez créé un credentials avec l'ID "dockerhub-creds", la pipeline
         // pourra l'utiliser automatiquement (voir stage "Docker Login (optionnel)")
-        DOCKER_CREDENTIALS_ID = 'dockerhub-creds'
+        DOCKER_CREDENTIALS_ID = 'docker-hub-token'
         // Registre Docker (laisser vide pour Docker Hub)
         DOCKER_REGISTRY = ''
         // Indicateurs runtime pour gérer le logout en fin de pipeline
