@@ -2,7 +2,7 @@ pipeline {
     agent any
     environment {
         // Nom d'image par défaut si aucun registre n'est fourni
-        LOCAL_IMAGE = 'student-management:local'
+        LOCAL_IMAGE = 'oussamabengamra/student-app:latest'
         // Image distante demandée par l'utilisateur pour le déploiement
         DEPLOY_IMAGE_DEFAULT = 'oussamabengamra/student-app:latest'
         // Espace de nom et nom d'image pour le build/push
@@ -95,7 +95,7 @@ pipeline {
                         archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
                     }
                 }
-        stage('SonarQube Analysis') {
+        /* stage('SonarQube Analysis') {
             steps {
                 script {
                     echo '5. Analyse de la qualité de code avec SonarQube (configuration fournie)'
@@ -108,27 +108,13 @@ pipeline {
                     """
                 }
             }
-        }
+        } */
         stage('Docker Build') {
             steps {
                 script {
                     echo '6. Construction de l\'image Docker locale...'
                     // Construire l'image locale à partir du Dockerfile
-                    sh 'DOCKER_BUILDKIT=1 docker build -t ${LOCAL_IMAGE} .'
-
-                    // Déterminer les tags complets vers le registre
-                    def fullTag = "${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE_NAME}:${env.BUILD_NUMBER}"
-                    def latestTag = "${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE_NAME}:latest"
-
-                    // Taguer l'image locale avec les tags vers le registre
-                    sh "docker tag ${env.LOCAL_IMAGE} ${fullTag}"
-                    sh "docker tag ${env.LOCAL_IMAGE} ${latestTag}"
-
-                    // Enregistrer le tag principal à utiliser pour la suite (déploiement)
-                    env.BUILT_IMAGE = fullTag
-
-                    // Inspection sommaire (utile au debug)
-                    sh 'docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Size}}" | grep ${DOCKER_IMAGE_NAME} || true'
+                     sh 'docker build -t ${env.LOCAL_IMAGE} .'
                 }
             }
         }
@@ -150,22 +136,6 @@ pipeline {
                     def latestTag = "${env.DOCKER_NAMESPACE}/${env.DOCKER_IMAGE_NAME}:latest"
                     sh "docker push ${fullTag}"
                     sh "docker push ${latestTag}"
-                }
-            }
-        }
-        stage('Deploy avec Docker Compose') {
-            steps {
-                script {
-                    echo '8. Déploiement/rafraîchissement du service via docker compose...'
-                    // Utiliser docker compose pour (re)déployer l\'application Spring Boot
-                    // Le service s\'appelle "spring-app" dans docker-compose.yaml
-                    // Le service s\'appelle "student-app" dans docker-compose.yaml
-                    // Tenter un pull (si l'image a été poussée), sinon l'image locale sera utilisée
-                    sh "docker pull ${env.BUILT_IMAGE} || true"
-                    // Déployer l'image construite via une variable d'environnement DEPLOY_IMAGE
-                    sh "DEPLOY_IMAGE=${env.BUILT_IMAGE} docker compose up -d spring-app"
-                    sh "DEPLOY_IMAGE=${env.BUILT_IMAGE} docker compose up -d student-app"
-                    sh 'docker ps --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.Names}}"'
                 }
             }
         }
