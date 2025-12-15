@@ -114,7 +114,7 @@ pipeline {
                 script {
                     echo '6. Construction de l\'image Docker locale...'
                     // Construire l'image locale à partir du Dockerfile
-                     sh 'docker build -t ${env.LOCAL_IMAGE} .'
+                     sh 'docker build -t oussamabengamra/student-app:latest .'
                 }
             }
         }
