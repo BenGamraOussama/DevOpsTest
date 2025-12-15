@@ -13,6 +13,12 @@ pipeline {
                 }
             }
         }
+           environment {
+             DOCKER_USERNAME = 'ghofraneidriss'
+             DOCKER_REPOSITORY = 'images'
+             DOCKER_TAG = 'latest'
+             DOCKER_IMAGE = 'ghofraneidriss/images:latest'
+                  }
         stage('Build') {
             steps {
                 script {
@@ -31,6 +37,15 @@ pipeline {
                 }
             }
         }
+         stage('Jar Packaging') {
+                            steps {
+                                script {
+                                    echo "4. Packaging du fichier JAR..."
+                                    sh 'mvn clean package -DskipTests'
+                                }
+                                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                            }
+                        }
         stage('SonarQube Analysis') {
             steps {
                 script {
@@ -52,6 +67,36 @@ pipeline {
       }
 
     }
+      stage('Push to Docker Hub') {
+            when {
+                allOf {
+                    expression { env.DOCKER_PUSH_ENABLED == 'true' }
+                    branch 'main'  // Optionnel : seulement pour la branche main
+                }
+            }
+            steps {
+                script {
+                    echo '6. Push vers Docker Hub...'
+                    withCredentials([usernamePassword(
+                        credentialsId: 'docker-hub-token',  // ID des credentials dans Jenkins
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
+                        sh """
+                            echo "Login to Docker Hub..."
+                            docker login -u ${DOCKER_USER} -p ${DOCKER_PASS}
+
+                            echo "Pushing image..."
+                            docker push ${LOCAL_IMAGE}
+
+                            echo "Image pushed successfully!"
+                        """
+                    }
+                }
+            }
+        }
+    }
+
     post {
         success {
             echo 'SUCCÈS : Build et push réussis!'
@@ -63,4 +108,5 @@ pipeline {
             echo 'Nettoyage...'
         }
     }
+
 }
