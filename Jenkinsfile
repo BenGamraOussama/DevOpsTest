@@ -1,5 +1,23 @@
 pipeline {
     agent any
+     environment {
+                        // Nom d'image par défaut si aucun registre n'est fourni
+                        LOCAL_IMAGE_SONAR = 'sonarqube:latest'
+                        LOCAL_IMAGE_SPRING = 'spring-app:latest'
+                        // Image distante Docker Hub
+                        DEPLOY_IMAGE_SONAR = 'amena12/images:sonarqube'
+                        DEPLOY_IMAGE_SPRING = 'amena12/images:spring'
+                        // Espace de nom et nom d'image pour le build/push
+                        DOCKER_NAMESPACE = 'amena12'
+                        DOCKER_IMAGE_NAME_SONAR = 'images:sonarqube'
+                        DOCKER_IMAGE_NAME_SPRING = 'images:spring'
+                        // Jenkins Docker Hub credentials ID
+                        DOCKER_CREDENTIALS_ID = 'docker-hub-token'
+                        // Registre Docker (laisser vide pour Docker Hub)
+                        DOCKER_REGISTRY = ''
+                        DOCKER_LOGGED_IN = ''
+                        DOCKER_REGISTRY_EFFECTIVE = ''
+                    }
     stages {
         stage('GitHub') {
             steps {
@@ -14,24 +32,7 @@ pipeline {
             }
         }
 
-             environment {
-                    // Nom d'image par défaut si aucun registre n'est fourni
-                    LOCAL_IMAGE_SONAR = 'sonarqube:latest'
-                    LOCAL_IMAGE_SPRING = 'spring-app:latest'
-                    // Image distante Docker Hub
-                    DEPLOY_IMAGE_SONAR = 'amena12/images:sonarqube'
-                    DEPLOY_IMAGE_SPRING = 'amena12/images:spring'
-                    // Espace de nom et nom d'image pour le build/push
-                    DOCKER_NAMESPACE = 'amena12'
-                    DOCKER_IMAGE_NAME_SONAR = 'images:sonarqube'
-                    DOCKER_IMAGE_NAME_SPRING = 'images:spring'
-                    // Jenkins Docker Hub credentials ID
-                    DOCKER_CREDENTIALS_ID = 'docker-hub-token'
-                    // Registre Docker (laisser vide pour Docker Hub)
-                    DOCKER_REGISTRY = ''
-                    DOCKER_LOGGED_IN = ''
-                    DOCKER_REGISTRY_EFFECTIVE = ''
-                }
+
         stage('Build') {
             steps {
                 script {
@@ -155,4 +156,3 @@ pipeline {
             echo 'Nettoyage...'
         }
     }
-}
