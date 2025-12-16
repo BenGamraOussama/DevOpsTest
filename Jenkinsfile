@@ -67,7 +67,7 @@ pipeline {
         stage('Docker Build - SonarQube') {
             steps {
 //                 sh 'docker build -t sonarqube:latest ./sonarqube'
-                sh 'docker tag sonarqube:latest amena12/images:sonarqube'
+//                 sh 'docker tag sonarqube:latest amena12/images:sonarqube'
                 sh 'docker push amena12/images:sonarqube'
             }
         }
