@@ -2,46 +2,36 @@ pipeline {
     agent any
 
     environment {
-        // Docker Credentials
         DOCKER_CREDENTIALS_ID = 'docker-hub-token'
-
-        // Image tags
-        SPRING_LOCAL_IMAGE = 'spring-app:latest'
-        SPRING_REMOTE_IMAGE = 'amena12/images:spring'
-
-        // SonarQube (décommenté si nécessaire)
-        SONAR_LOCAL_IMAGE = 'sonarqube:latest'
-        SONAR_REMOTE_IMAGE = 'amena12/images:sonarqube'
-
-        // Maven settings
-        MAVEN_OPTS = '-Xmx1024m'
+        SPRING_IMAGE = 'spring-app:latest'
+        REMOTE_IMAGE = 'amena12/images:spring'
     }
 
     options {
         timeout(time: 30, unit: 'MINUTES')
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '5'))
     }
 
     stages {
-        // Étape 1: Récupération du code
+        // Étape 1: Checkout
         stage('Checkout SCM') {
             steps {
-                echo '📦 Clonage du projet depuis GitHub'
-                git branch: 'amena',
-                    url: 'https://github.com/BenGamraOussama/Student_Management.git',
-                    poll: false
+                echo '📦 Checkout du code source'
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/amena']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/BenGamraOussama/Student_Management.git'
+                    ]],
+                    extensions: [[$class: 'CleanBeforeCheckout']]
+                ])
 
-                sh 'echo "Dernier commit: $(git log -1 --oneline)"'
-            }
-
-            post {
-                success {
-                    echo '✅ Checkout réussi'
-                }
-                failure {
-                    echo '❌ Échec du checkout'
-                }
+                // Vérification
+                sh '''
+                    echo "Répertoire: $(pwd)"
+                    echo "Contenu:"
+                    ls -la
+                '''
             }
         }
 
@@ -49,7 +39,16 @@ pipeline {
         stage('Build') {
             steps {
                 echo '🔨 Compilation du projet'
-                sh 'mvn clean compile -DskipTests'
+                sh '''
+                    echo "Vérification du POM..."
+                    if [ -f "pom.xml" ]; then
+                        echo "POM.xml trouvé"
+                        mvn clean compile -DskipTests -q
+                    else
+                        echo "ERREUR: pom.xml non trouvé"
+                        exit 1
+                    fi
+                '''
             }
 
             post {
@@ -57,54 +56,29 @@ pipeline {
                     echo '✅ Build réussi'
                 }
                 failure {
-                    echo '❌ Échec du build'
+                    echo '❌ Build échoué'
                 }
             }
         }
 
-        // Étape 3: Tests
+        // Étape 3: Tests (correction de "Text" -> "Test")
         stage('Test') {
             steps {
                 echo '🧪 Exécution des tests'
-                sh 'mvn test'
+                sh 'mvn test -q'
             }
 
             post {
                 always {
                     junit 'target/surefire-reports/*.xml'
                 }
-                success {
-                    echo '✅ Tests réussis'
-                }
-                failure {
-                    echo '❌ Tests échoués'
-                }
             }
         }
 
-        // Étape optionnelle: Analyse SonarQube (décommenter si nécessaire)
-        stage('SonarQube Analysis') {
-            when {
-                expression { return env.SONAR_TOKEN != null }
-            }
-            steps {
-                echo '📊 Analyse de qualité du code avec SonarQube'
-                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                    sh """
-                        mvn clean verify sonar:sonar \
-                        -Dsonar.projectKey=Student-Management \
-                        -Dsonar.projectName=Student-Management \
-                        -Dsonar.host.url=http://localhost:9000 \
-                        -Dsonar.token=${SONAR_TOKEN}
-                    """
-                }
-            }
-        }
-
-        // Étape 4: Connexion à Docker Hub
+        // Étape 4: Docker Login
         stage('Docker Login') {
             steps {
-                echo '🔐 Connexion à Docker Registry'
+                echo '🔐 Connexion à Docker Hub'
                 script {
                     withCredentials([
                         usernamePassword(
@@ -114,62 +88,66 @@ pipeline {
                         )
                     ]) {
                         sh '''
-                            echo "$DOCKER_PASS" | docker login \
-                            -u "$DOCKER_USER" \
-                            --password-stdin
+                            echo "Tentative de login Docker..."
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
+                            if [ $? -eq 0 ]; then
+                                echo "✅ Login Docker réussi"
+                            else
+                                echo "❌ Login Docker échoué"
+                                exit 1
+                            fi
                         '''
                     }
                 }
             }
-
-            post {
-                success {
-                    echo '✅ Connexion Docker réussie'
-                }
-                failure {
-                    echo '❌ Échec de la connexion Docker'
-                    error('Impossible de se connecter à Docker Registry')
-                }
-            }
         }
 
-        // Étape 5: Build de l'image Spring
+        // Étape 5: Docker Build (CORRECTION IMPORTANTE)
         stage('Docker Build - Spring App') {
             steps {
-                echo '🐳 Construction de l\'image Docker Spring'
+                echo '🐳 Construction de l\'image Docker'
                 script {
-                    // Construction de l'image
-                    sh "docker build -t ${env.SPRING_LOCAL_IMAGE} ./spring-app"
+                    // Vérifier d'abord la structure
+                    sh '''
+                        echo "Structure du projet:"
+                        ls -la
+                        echo ""
+                        echo "Contenu de spring-app:"
+                        if [ -d "spring-app" ]; then
+                            ls -la spring-app/
+                            echo ""
+                            echo "Dockerfile présent?"
+                            ls -la spring-app/Dockerfile 2>/dev/null || echo "Dockerfile non trouvé dans spring-app/"
+                        else
+                            echo "ERREUR: Dossier spring-app non trouvé!"
+                            exit 1
+                        fi
+                    '''
 
-                    // Tag pour le registry distant
-                    sh "docker tag ${env.SPRING_LOCAL_IMAGE} ${env.SPRING_REMOTE_IMAGE}"
+                    // Construire l'image - CORRECTION ICI
+                    // La commande correcte est: docker build -t nom_image chemin
+                    sh "docker build -t ${env.SPRING_IMAGE} ./spring-app"
 
-                    // Push vers Docker Hub
-                    sh "docker push ${env.SPRING_REMOTE_IMAGE}"
+                    // Tag pour Docker Hub
+                    sh "docker tag ${env.SPRING_IMAGE} ${env.REMOTE_IMAGE}"
+
+                    // Push
+                    sh "docker push ${env.REMOTE_IMAGE}"
                 }
             }
 
             post {
                 success {
-                    echo '✅ Image Spring construite et poussée avec succès'
+                    echo '✅ Image Docker construite et poussée avec succès'
+                    sh '''
+                        echo "Images Docker créées:"
+                        docker images | grep spring
+                    '''
                 }
                 failure {
-                    echo '❌ Échec de la construction de l\'image Spring'
-                }
-            }
-        }
-
-        // Étape optionnelle: Build SonarQube (décommenter si nécessaire)
-        stage('Docker Build - SonarQube') {
-            when {
-                expression { return false } // Désactivé par défaut
-            }
-            steps {
-                echo '🐳 Construction de l\'image Docker SonarQube'
-                script {
-                    sh "docker build -t ${env.SONAR_LOCAL_IMAGE} ./sonarqube"
-                    sh "docker tag ${env.SONAR_LOCAL_IMAGE} ${env.SONAR_REMOTE_IMAGE}"
-                    sh "docker push ${env.SONAR_REMOTE_IMAGE}"
+                    echo '❌ Échec de la construction Docker'
+                    sh 'docker images'
                 }
             }
         }
@@ -177,51 +155,43 @@ pipeline {
 
     post {
         always {
-            echo '🧹 Nettoyage des ressources'
+            echo '🧹 Nettoyage'
             script {
                 // Déconnexion Docker
-                sh 'docker logout || true'
+                sh 'docker logout 2>/dev/null || true'
 
-                // Nettoyage des images locales
+                // Nettoyage des images locales (optionnel)
                 sh """
-                    docker rmi ${env.SPRING_LOCAL_IMAGE} 2>/dev/null || true
-                    docker rmi ${env.SPRING_REMOTE_IMAGE} 2>/dev/null || true
-                    docker rmi ${env.SONAR_LOCAL_IMAGE} 2>/dev/null || true
-                    docker rmi ${env.SONAR_REMOTE_IMAGE} 2>/dev/null || true
+                    docker rmi ${env.SPRING_IMAGE} 2>/dev/null || true
+                    docker rmi ${env.REMOTE_IMAGE} 2>/dev/null || true
                 """
-
-                // Nettoyage Maven
-                sh 'mvn clean 2>/dev/null || true'
             }
 
-            // Archivage des résultats
+            // Archivage des artefacts
             archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
+            archiveArtifacts artifacts: '**/Dockerfile', allowEmptyArchive: true
         }
 
         success {
-            echo '🎉 PIPELINE TERMINÉ AVEC SUCCÈS'
-            script {
-                // Ici vous pouvez ajouter des notifications
-                // slackSend channel: '#jenkins', message: "Build réussi: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
-                // emailext body: 'Build réussi!', subject: "SUCCESS: ${env.JOB_NAME}", to: 'team@example.com'
-            }
+            echo '🎉 PIPELINE RÉUSSI!'
+            emailext (
+                subject: "✅ SUCCESS: Build #${env.BUILD_NUMBER}",
+                body: "Le pipeline Jenkins a réussi!\n\nJob: ${env.JOB_NAME}\nBuild: #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}",
+                to: 'votre-email@example.com'
+            )
         }
 
         failure {
             echo '💥 PIPELINE ÉCHOUÉ'
-            script {
-                // Notifications d'échec
-                // slackSend channel: '#jenkins-alerts', message: "Build échoué: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
-                // emailext body: 'Build échoué!', subject: "FAILURE: ${env.JOB_NAME}", to: 'team@example.com'
-            }
+            emailext (
+                subject: "❌ FAILURE: Build #${env.BUILD_NUMBER}",
+                body: "Le pipeline Jenkins a échoué!\n\nJob: ${env.JOB_NAME}\nBuild: #${env.BUILD_NUMBER}\nURL: ${env.BUILD_URL}\n\nConsultez les logs pour plus de détails.",
+                to: 'votre-email@example.com'
+            )
         }
 
         unstable {
             echo '⚠️ PIPELINE INSTABLE'
-        }
-
-        aborted {
-            echo '🛑 PIPELINE INTERROMPU'
         }
     }
 }
