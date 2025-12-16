@@ -58,6 +58,21 @@ pipeline {
             }
         }
 
+        /* stage('SonarQube Analysis') {
+                    steps {
+                        script {
+                            echo '5. Analyse de la qualité de code avec SonarQube (configuration fournie)'
+                            sh """
+                                mvn clean verify sonar:sonar \
+                                  -Dsonar.projectKey=Student-Management \
+                                  -Dsonar.projectName='Student-Management' \
+                                  -Dsonar.host.url=http://localhost:9000 \
+                                  -Dsonar.token=${env.SONAR_TOKEN ?: 'sqp_c12214b751ee7a42bd312c0c8a018761ccc617a1'}
+                            """
+                        }
+                    }
+                } */
+
         stage('Docker Build') {
             steps {
                 echo '5. Construction de l\'image Docker locale (tag: latest)...'
