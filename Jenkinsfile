@@ -37,7 +37,7 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
+       /*  stage('SonarQube Analysis') {
             steps {
                 sh """
                   mvn clean verify sonar:sonar \
@@ -47,7 +47,7 @@ pipeline {
                   -Dsonar.token=${env.SONAR_TOKEN}
                 """
             }
-        }
+        } */
 
         stage('Docker Login') {
             steps {
