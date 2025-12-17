@@ -122,4 +122,3 @@ pipeline {
             echo 'Nettoyage...'
         }
     }
-    }
