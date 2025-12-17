@@ -43,7 +43,7 @@ pipeline {
                     echo "Vérification du POM..."
                     if [ -f "pom.xml" ]; then
                         echo "POM.xml trouvé"
-                        mvn clean compile -DskipTests -q
+                        mvn clean package -DskipTests -q
                     else
                         echo "ERREUR: pom.xml non trouvé"
                         exit 1
