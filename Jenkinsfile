@@ -98,10 +98,22 @@ pipeline {
                         }
                     }
                 }
+                  stage('Deploy to Kubernetes') {
+                            steps {
+                                echo '7. Déploiement sur Kubernetes...'
+                                sh """
+                                    export KUBECONFIG=${KUBECONFIG}
+                                    kubectl apply -f spring-deployment.yaml
+                                    kubectl rollout status deployment/spring-app --timeout=120s
+                                    kubectl get pods
+                                """
+                            }
+                        }
+                    }
 
     post {
         success {
-            echo 'SUCCÈS : Build et push réussis!'
+            echo 'Build, Docker et déploiement réussis!'
         }
         failure {
             echo 'ÉCHEC : Build failed!'
