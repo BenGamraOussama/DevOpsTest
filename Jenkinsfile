@@ -66,7 +66,7 @@ pipeline {
   -Dsonar.projectKey=Student-Management \
   -Dsonar.projectName='Student-Management' \
   -Dsonar.host.url=http://localhost:9000 \
-  -Dsonar.token=sqp_ebf34f8de0783d5a4f748f93c21f02c7a7150dfc"""
+  -Dsonar.token=sqp_dbba1440cd28cbaaab86d15c08de2fed418db879"""
                         }
                     }
                 }
