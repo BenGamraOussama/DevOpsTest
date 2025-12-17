@@ -58,7 +58,7 @@ pipeline {
             }
         }
 
-        /* stage('SonarQube Analysis') {
+        stage('SonarQube Analysis') {
                     steps {
                         script {
                             echo '5. Analyse de la qualité de code avec SonarQube (configuration fournie)'
@@ -71,7 +71,7 @@ pipeline {
                             """
                         }
                     }
-                } */
+                }
 
         stage('Docker Build') {
             steps {
