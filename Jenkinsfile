@@ -5,6 +5,10 @@ pipeline {
         DOCKER_REPOSITORY = 'images'
         DOCKER_TAG = 'latest'
         DOCKER_IMAGE = "${DOCKER_USERNAME}/${DOCKER_REPOSITORY}:${DOCKER_TAG}"
+
+        // Kubernetes
+        KUBECONFIG = '/var/lib/jenkins/.kube/config'
+
     }
 
     stages {
