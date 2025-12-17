@@ -62,11 +62,13 @@ pipeline {
                     steps {
                         script {
                             echo '5. Analyse de la qualité de code avec SonarQube (configuration fournie)'
-                            sh """mvn clean verify sonar:sonar \
-  -Dsonar.projectKey=Student-Management \
-  -Dsonar.projectName='Student-Management' \
-  -Dsonar.host.url=http://localhost:9000 \
-  -Dsonar.token=sqp_dbba1440cd28cbaaab86d15c08de2fed418db879"""
+                            sh """
+                                mvn clean verify sonar:sonar \
+                                  -Dsonar.projectKey=Student-Management \
+                                  -Dsonar.projectName='Student-Management' \
+                                  -Dsonar.host.url=http://localhost:9000 \
+                                  -Dsonar.token=${env.SONAR_TOKEN ?: 'sqp_c12214b751ee7a42bd312c0c8a018761ccc617a1'}
+                            """
                         }
                     }
                 }
