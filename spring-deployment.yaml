@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: spring-app
-          image: oussamabengamra/student-app:latest
+          image: ghofraneidriss/images
           ports:
             - containerPort: 8080
           envFrom:
