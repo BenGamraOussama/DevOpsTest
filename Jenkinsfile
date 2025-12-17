@@ -103,39 +103,32 @@ pipeline {
             }
         }
 
-        // Étape 5: Docker Build (CORRECTION IMPORTANTE)
         stage('Docker Build - Spring App') {
             steps {
                 echo '🐳 Construction de l\'image Docker'
                 script {
-                    // Vérifier d'abord la structure
+
+                    // Vérifier la structure réelle
                     sh '''
                         echo "Structure du projet:"
                         ls -la
                         echo ""
-                        echo "Contenu de spring-app:"
-                        if [ -d "spring-app" ]; then
-                            ls -la spring-app/
-                            echo ""
-                            echo "Dockerfile présent?"
-                            ls -la spring-app/Dockerfile 2>/dev/null || echo "Dockerfile non trouvé dans spring-app/"
-                        else
-                            echo "ERREUR: Dossier spring-app non trouvé!"
-                            exit 1
-                        fi
+                        echo "Dockerfile présent?"
+                        ls -la Dockerfile || (echo "❌ Dockerfile non trouvé" && exit 1)
                     '''
 
-                    // Construire l'image - CORRECTION ICI
-                    // La commande correcte est: docker build -t nom_image chemin
-                    sh "docker build -t ${env.SPRING_IMAGE} ./spring-app"
+                    // Construire l'image depuis la racine du projet
+                    sh "docker build -t ${env.SPRING_IMAGE} ."
 
                     // Tag pour Docker Hub
                     sh "docker tag ${env.SPRING_IMAGE} ${env.REMOTE_IMAGE}"
 
-                    // Push
+                    // Push vers Docker Hub
                     sh "docker push ${env.REMOTE_IMAGE}"
                 }
             }
+        }
+
 
             post {
                 success {
