@@ -126,7 +126,7 @@ pipeline {
                     // Push vers Docker Hub
                     sh "docker push ${env.REMOTE_IMAGE}"
                 }
-            }
+
         }
 
 
